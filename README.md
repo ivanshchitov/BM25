@@ -11,4 +11,4 @@ There are 4 main modules of the program: parser, query processor, ranking functi
 How To Run
 ----------
 
-Simply run `$ python main.py` in the src folder to see help for using. 
+Simply run `$ python main.py -h` in the src folder to see help for using. 
