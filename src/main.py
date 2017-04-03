@@ -11,7 +11,7 @@ import operator
 
 def get_arguments():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:q:t:f:h", ["corpus=", "queries=", "thesaurus=","format=", "help"])
+        opts, args = getopt.getopt(sys.argv[1:], "c:q:t:f:m:h", ["corpus=", "queries=", "thesaurus=", "format=", "min_score=", "help"])
     except getopt.GetoptError as err:
         print str(err)
         print(help_text)
@@ -20,6 +20,7 @@ def get_arguments():
     topics = None
     thesaurus = None
     output_format = "topic-to-text"
+    min_score = 0
     for o, a in opts:
         if o in ("-c", "--corpus"):
             corpus = a
@@ -32,18 +33,22 @@ def get_arguments():
             thesaurus = a
         elif o in ("-f", "--format"):
             output_format = a
+        elif o in ("-m", "--min_score"):
+            min_score = float(a)
         else:
             assert False, "unhandled option"
 
-    return corpus, topics, thesaurus, output_format
+    return corpus, topics, thesaurus, output_format, min_score
 
 help_text = """Usage: python main.py -c CORPUS_PATH -t TOPICS_PATH
 -c CORPUS_PATH, --corpus=CORPUS_PATH:
 \tPath to the document with the corpus of texts
--1 QUERIES_PATH, --queries=QUERIES_PATH:
+-q QUERIES_PATH, --queries=QUERIES_PATH:
 \tPath to the document with list of queries(topics)
 -f FORMAT, --format=FORMAT:
 \tThe output format of algorythm result. Allowable values: "bm25" and "topic-to-texts"
+-m MIN_SCORE, --min_score=MIN_SCORE:
+\tThe min score to filter results.
 -h, --help:
 \tprints this help
 """
@@ -87,14 +92,14 @@ def load_thesaurus_dictionary(thesaurus_path, synonym, hyponym, hypernym):
 
 
 def main():
-	corpus_path, queries_path, thesaurus, output_format = get_arguments()
+	corpus_path, queries_path, thesaurus, output_format, min_score = get_arguments()
 	cp = CorpusParser(filename=corpus_path)
 	qp = QueryParser(filename=queries_path)
 	qp.parse()
 	queries = qp.get_queries()
 	cp.parse()
 	corpus = cp.get_corpus()
-	thesaurus_dictionary = load_thesaurus_dictionary(thesaurus, 0, 1, 1)
+	thesaurus_dictionary = load_thesaurus_dictionary(thesaurus, True, False, False)
 	proc = QueryProcessor(queries, corpus)
 	results = proc.run(thesaurus_dictionary)
 	qid = 0
@@ -104,6 +109,7 @@ def main():
 		index = 0
 		docs = []
 		for item in sorted_x:
+			if item[1] < min_score: continue
 			tmp = (qid + 1, item[0], index, item[1])
 			if output_format == "bm25": 
 				print '{:>1}\tQ0\t{:>4}\t{:>2}\t{:>12}\tNH-BM25'.format(*tmp)
@@ -111,7 +117,7 @@ def main():
 			docs.append(item[0])
 		qid += 1
 		if output_format != "bm25":
-			print ' '.join(topic) if thesaurus_dictionary is None else topic + ' ' +', '.join(docs)
+			print (' '.join(topic) if thesaurus_dictionary is None else topic) + ' ' +', '.join(docs)
 
 
 if __name__ == '__main__':
